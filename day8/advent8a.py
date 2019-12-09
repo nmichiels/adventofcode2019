@@ -40,3 +40,28 @@ occ = dict(zip(unique, counts))
 
 print("result:", occ['1']*occ['2'])
 
+
+#part 2 decode image
+
+result = np.zeros((height,width), dtype='int')
+
+for row in range(height):
+    for col in range(width):
+
+        i = 0
+        while image[row,col,i] == '2': # as long as transparant, continue to next layer
+            i += 1
+        #print(image[row,col,i])
+        if image[row,col,i] == '1':
+            result[row,col] = 1
+
+        print(result[row,col], end='')
+
+    print('')
+
+import cv2
+
+import matplotlib.pyplot as plt
+imgplot = plt.imshow(result)
+plt.show()
+
