@@ -24,6 +24,7 @@ def showMap(map, score = 0, frame = 0):
         print('')
     print('')
     print('Frame', frame)
+    print(" ", flush=True)
 
 
 
@@ -125,6 +126,7 @@ def seg_intersect(a1,a2, b1,b2) :
     return intersection
 
 
+
 def runPart2():
     instructions = np.loadtxt('input_13.txt', delimiter=',', dtype='int64')
     code = instructions.copy()
@@ -149,171 +151,193 @@ def runPart2():
     score = 0
     running = True
     prevPosBall = None#np.array([0,0])
+    prevPosPaddle = None
+    countError = 0
     while True:
-        while notifyOnInput.empty():
-            while not notify.empty():
+     
+        
+        
+        # notifyOnInput.get()
+        # inputs.put(1)
 
-                out = notify.get()
-                if out == -1:
-                    print("the end")
-                    running = False
-                    break
+        # notifyOnInput.get()
 
-                x = outputs.get()
-                out = notify.get()
-                y = outputs.get()
-                out = notify.get()
-                tileId = outputs.get()
-                # print("drawing", tileId, "at", y, ",", x)
-                if x == -1 and y == 0:
-                    score = tileId
-                    print("Score: ", score)
 
-                if tileId == 0:
-                    map[y,x] = 'W'
-                elif tileId == 1:
-                    map[y,x] = 'X'
-                elif tileId == 2:
-                    map[y,x] = '.'
-                elif tileId == 3:
-                    map[y,x] = '-'
-                elif tileId == 4:
-                    map[y,x] = 'O'   
-                else:
-                    print("Unknown Tile ID")
+        while True:
+    
+            # out = notify.get()
+            # if out == -1:
+            #     print("the end")
+            #     running = False
+            #     break
 
-                # map[x,y] = tileId
-                # 
-            if not running:
+            x = outputs.get()
+
+            # check if input is required
+            if x == "done":
                 break
+            # out = notify.get()
+            y = outputs.get()
+            # out = notify.get()
+            tileId = outputs.get()
+            # print("drawing", tileId, "at", y, ",", x)
+            if x == -1 and y == 0:
+                score = tileId
+                print("Score: ", score)
+
+            if tileId == 0:
+                map[y,x] = 'W'
+            elif tileId == 1:
+                map[y,x] = 'X'
+            elif tileId == 2:
+                map[y,x] = '.'
+            elif tileId == 3:
+                map[y,x] = '-'
+            elif tileId == 4:
+                map[y,x] = 'O'   
+            else:
+                print("Unknown Tile ID")
+        
+            # map[x,y] = tileId
+            # 
+        # notifyOnInput.get()
         if not running:
-                break
+            print("STOP")
+            break
+
+        # time.sleep(0.1)
         showMap(map, score, frame)
-        # if not running:
-        #     break
-        if not notifyOnInput.empty():
-            # print("joystick", frame)
+       
+        
+        positionBall = np.where(map == 'O')
+        positionPaddle = np.where(map == '-')
+        dir = 0
+
+        if not outputs.empty():
+            print("ERROR outputs BALL")
+            countError += 1
+            return
+        if len(positionBall[0]) == 0:
+            # print("ERROR PREDICTING BALL")
+            countError += 1
+            positionBall = prevPosBall
+            return
+        else:
+            positionBall = np.array([positionBall[0][0],positionBall[1][0]])
             
-
-
-            positionBall = np.where(map == 'O')
-            positionPaddle = np.where(map == '-')
-            dir = 0
-            if len(positionBall[0]) > 0 and len(positionPaddle[0]) > 0:
-                
-                positionBall = np.array([positionBall[0][0],positionBall[1][0]])
-                positionPaddle = np.array([positionPaddle[0][0],positionPaddle[1][0]])
-
-                if prevPosBall is None:
-                    prevPosBall = positionBall
-
-                intersect = seg_intersect(positionBall, prevPosBall, np.array([positionPaddle[0],positionPaddle[1]-10]),np.array([positionPaddle[0],positionPaddle[1]+10]))
-                # print("intersect: ", intersect)
-                
-                down = positionBall[0] > prevPosBall[0]
-
-   
-
-                #intersect ground
-                intersectGround = False
-                if down:
-                    intersectGround = seg_intersect(positionBall, prevPosBall, np.array([positionPaddle[0]-1,positionPaddle[1]-10]),np.array([positionPaddle[0]-1,positionPaddle[1]+10]))
-                    if intersectGround is not False and (intersectGround[1] < 0 or intersectGround[1] > 41):
-
-                        intersectLeft = seg_intersect(positionBall, prevPosBall, np.array([0,0]),np.array([positionPaddle[0],0]))
-                        if intersectLeft is not False and (intersectLeft[0] < 0 or intersectLeft[0] > positionPaddle[0]-1):
-                            intersectLeft = False
-                        else:
-                            intersectGround = seg_intersect(intersectLeft, np.array([intersectLeft[0]+1,intersectLeft[1]+1]), np.array([positionPaddle[0]-1,positionPaddle[1]-10]),np.array([positionPaddle[0]-1,positionPaddle[1]+10]))    
-
-                    
-                        intersectRight = seg_intersect(positionBall, prevPosBall, np.array([0,41]),np.array([positionPaddle[0],41]))
-                        if intersectRight is not False and (intersectRight[0] < 0 or intersectRight[0] > positionPaddle[0]-1):
-                            intersectRight = False
-                        else:
-                            intersectGround = seg_intersect(intersectRight, np.array([intersectRight[0]+1,intersectRight[1]-1]), np.array([positionPaddle[0]-1,positionPaddle[1]-10]),np.array([positionPaddle[0]-1,positionPaddle[1]+10]))    
-                
-      
-                print("intersectGround: ", intersectGround)
-
-
-                # if prevPosBall[0] == positionBall[0] and prevPosBall[1] == positionBall[1]:
-                #     pass
-                # else:
-                #     dir = positionBall - prevPosBall
-                #     trackedPos = positionBall
-                #     while trackedPos[0] != positionPaddle[0]:
-                #         newPos = trackedPos + dir
-                #         if map[newPos[0],newPos[1]] == 'X':
-                #             print("hit a wall")
-                #             dir = -dir
-                #             newPos = trackedPos + dir
-
-                # check if hit on paddle
-                if positionBall[0] + 1 == positionPaddle[0] and positionBall[1] == positionPaddle[1]:
-                    intersectGround = False
-
-                    # direction = positionBall - prevPosBall
-                    # if direction[1] > 0:
-                    #     dir = -1
-                    # elif direction[1] < 0:
-                    #     dir = 1
-                    # else:
-                    #     dir = 0
+        if len(positionPaddle[0]) == 0:
+            # print("ERROR PREDICTING PADDLER")
+            countError += 1
+            positionPaddle = prevPosPaddle
+            return
+        else:
+            positionPaddle = np.array([positionPaddle[0][0],positionPaddle[1][0]])
 
         
-                if intersectGround is not False:
-                    if intersectGround[1] < positionPaddle[1]:
-                        dir = -1
-                    elif intersectGround[1] > positionPaddle[1]:
-                        dir = 1  
-                    else:
-                        if positionBall[1] > prevPosBall[1]:
-                            dir = 1  
-                        elif positionBall[1] < prevPosBall[1]:
-                            dir = -1  
-                        else:
-                            dir = 0
+        
+        
 
+        if prevPosBall is None:
+            prevPosBall = positionBall
+
+        if prevPosPaddle is None:
+            prevPosPaddle = positionPaddle
+
+        
+
+        print("num errors: ", countError)
+        # if prevPosBall[0] == positionBall[0] and prevPosBall[1] == positionBall[1]:
+        #     pass
+        # else:
+        #     dir = positionBall - prevPosBall
+        #     trackedPos = positionBall
+        #     while trackedPos[0] != positionPaddle[0]:
+        #         newPos = trackedPos + dir
+        #         if map[newPos[0],newPos[1]] == 'X':
+        #             print("hit a wall")
+        #             dir = -dir
+        #             newPos = trackedPos + dir
+
+        # check if hit on paddle
+        if positionBall[0] + 1 == positionPaddle[0] and positionBall[1] == positionPaddle[1]:
+            intersectGround = False
+            dir = 0
+            # direction = positionBall - prevPosBall
+            # if direction[1] > 0:
+            #     dir = -1
+            # elif direction[1] < 0:
+            #     dir = 1
+            # else:
+            #     dir = 0
+
+        else:
+            if positionBall[1] < positionPaddle[1]:
+                dir = -1
+            elif positionBall[1] > positionPaddle[1]:
+                dir = 1
+            else:
+                # dir = 0
+                if positionBall[1] > prevPosBall[1]:
+                    dir = 1  
+                elif positionBall[1] < prevPosBall[1]:
+                    dir = -1  
                 else:
-                    if positionBall[1] < positionPaddle[1]:
-                        dir = -1
-                    elif positionBall[1] > positionPaddle[1]:
-                        dir = 1
-                    # else:
-                    #     if positionBall[1] > prevPosBall[1]:
-                    #         dir = 1  
-                    #     elif positionBall[1] < prevPosBall[1]:
-                    #         dir = -1  
-                    #     else:
-                    #         dir = 0
-                # else:
-                #     # predict dir
-                #     if positionBall[1] > prevPosBall[1]:
-                #         dir = 1  
-                #     if positionBall[1] < prevPosBall[1]:
-                #         dir = -1
+                    dir = 0
 
 
-                # if down and intersect is not False:
-                #     if intersect[1] < positionPaddle[1]:
-                #         dir = -1
-                #     if intersect[1] > positionPaddle[1]:
-                #         dir = 1  
-                # else:
-                #     if positionBall[1] < positionPaddle[1]:
-                #         dir = -1
-                #     if positionBall[1] > positionPaddle[1]:
-                #         dir = 1  
+        # if intersectGround is not False:
+        #     if intersectGround[1] < positionPaddle[1]:
+        #         dir = -1
+        #     elif intersectGround[1] > positionPaddle[1]:
+        #         dir = 1  
+        #     else:
+        #         if positionBall[1] > prevPosBall[1]:
+        #             dir = 1  
+        #         elif positionBall[1] < prevPosBall[1]:
+        #             dir = -1  
+        #         else:
+        #             dir = 0
 
-                prevPosBall = positionBall
-      
-            notifyOnInput.get()
-            
-            # time.sleep(0.1)
-            inputs.put(dir)
-            
-            frame += 1
+        # else:
+        #     if positionBall[1] < positionPaddle[1]:
+        #         dir = -1
+        #     elif positionBall[1] > positionPaddle[1]:
+        #         dir = 1
+        #     else:
+        #         if positionBall[1] > prevPosBall[1]:
+        #             dir = 1  
+        #         elif positionBall[1] < prevPosBall[1]:
+        #             dir = -1  
+        #         else:
+        #             dir = 0
+        # else:
+        #     # predict dir
+        #     if positionBall[1] > prevPosBall[1]:
+        #         dir = 1  
+        #     if positionBall[1] < prevPosBall[1]:
+        #         dir = -1
+
+
+        # if down and intersect is not False:
+        #     if intersect[1] < positionPaddle[1]:
+        #         dir = -1
+        #     if intersect[1] > positionPaddle[1]:
+        #         dir = 1  
+        # else:
+        #     if positionBall[1] < positionPaddle[1]:
+        #         dir = -1
+        #     if positionBall[1] > positionPaddle[1]:
+        #         dir = 1  
+
+        prevPosBall = positionBall
+        prevPosPaddle = positionPaddle
+    
+        # notifyOnInput.get()
+        
+        # time.sleep(1)
+        inputs.put(dir)
+        
+        frame += 1
     
        
     print("end")

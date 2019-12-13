@@ -68,7 +68,7 @@ def runProgram(instructions, inputs, outputs, notify, notifyOnInput):
 
         if opcode == 3:
             print("waiting for input")
-            notifyOnInput.put(1)
+            outputs.put("done")
             num =  inputs.get()
             print("done waiting for input")
             if digits[-1] == 1:
@@ -93,7 +93,7 @@ def runProgram(instructions, inputs, outputs, notify, notifyOnInput):
             inputPos = instructions[pc+1]
             #print(val)
             outputs.put(val)
-            notify.put(1) # notify output
+            #notify.put(1) # notify output
             pc += 2
 
         if opcode == 5:
