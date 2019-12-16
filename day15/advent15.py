@@ -24,7 +24,7 @@ def showMap(map, droidPos, steps = 0):
 
 
 
-def getFeedback(dir, inputs, outputs, notify):
+def tryToTakeStepIntoDirection(dir, inputs, outputs, notify):
    
     inputs.put(dir)
 
@@ -35,7 +35,6 @@ def getFeedback(dir, inputs, outputs, notify):
         return -1
 
     out = outputs.get()
-
     return out
    
 def updateMap(feedback, droidPos, direction, map):
@@ -66,6 +65,18 @@ def updateMap(feedback, droidPos, direction, map):
 
 import time
 
+
+def getInverseDir(dir):
+    if dir == 1:
+       return 2
+    elif dir == 2:
+        return 1
+    elif dir == 3:
+        return 4
+    elif dir == 4:
+        return 3
+
+
 def backtrack(map, droidPos, directions, currentPath, inputs, outputs, notify):
     uniquePaths = []
     for i in range(1,5):
@@ -77,16 +88,15 @@ def backtrack(map, droidPos, directions, currentPath, inputs, outputs, notify):
         if map[newDroidPos[0],newDroidPos[1]] != 'W':
             continue
         
-        feedback = getFeedback(i, inputs, outputs, notify)
+        feedback = tryToTakeStepIntoDirection(i, inputs, outputs, notify)
         updateMap(feedback, droidPos, direction, map)
         
-        time.sleep(0)
-        showMap(map, droidPos)
-        print("go to direction ", i)
-        print("path:", currentPath)
+        #time.sleep(0.5)
+        #showMap(map, droidPos)
+
+        
         if feedback == 0:
             # droid hit a wall, position not changed
-            print("hit a wall")
             continue
 
         if feedback == -1:
@@ -94,39 +104,58 @@ def backtrack(map, droidPos, directions, currentPath, inputs, outputs, notify):
             return uniquePaths
         if feedback == 1:
             # droid moved in the requested direction
-            newDroidPos = np.add(droidPos, direction)
             newPath = currentPath + [newDroidPos]
             uniquePaths += backtrack(map, newDroidPos, directions,newPath, inputs, outputs, notify)
+            
+            # take one step back to backtrack previous pos
+            feedback = tryToTakeStepIntoDirection(getInverseDir(i), inputs, outputs, notify)
+            continue
+
         if feedback == 2:
             # droid moved in the requested direction, oxygen system found!
-            newDroidPos = np.add(droidPos, direction)
-            uniquePaths += currentPath + [newDroidPos]
+            uniquePaths += [currentPath + [newDroidPos]]
             print(uniquePaths)
-            print("WHAT")
-            import sys
-            sys.exit(0)
-            reverseDir = 0
-            if i == 1:
-                reverseDir = 2
-            elif i == 2:
-                reverseDir = 1
-            if i == 3:
-                reverseDir = 4
-            elif i == 4:
-                reverseDir = 3
-            # take one step back
-            feedback = getFeedback(reverseDir, inputs, outputs, notify)
+
+           
+            # take one step back to backtrack previous pos
+            feedback = tryToTakeStepIntoDirection(getInverseDir(i), inputs, outputs, notify)
             continue
 
     return uniquePaths
 
+def fillOxygen(map, directions):
+    unique, counts = np.unique(map, return_counts=True)
+    occ = dict(zip(unique, counts))
 
+    oxygens = np.where(map == 'O')
+    oxygens = [(oxygens[0][0],oxygens[1][0])]
+
+
+    minutes = 0
+    print(oxygens)
+    while '.' in occ:
+        newOxygens = oxygens.copy()
+        for oxygen in oxygens:
+            for i in range(1,5):
+                direction = directions[i]
+                newPos = np.add(oxygen, direction)
+
+                if map[newPos[0],newPos[1]] == '.' or map[newPos[0],newPos[1]] == 'D':
+                    map[newPos[0],newPos[1]] = 'O'
+                    newOxygens.append(newPos)
+        oxygens = newOxygens
+        showMap(map, [0,0])
+
+        minutes += 1
+        unique, counts = np.unique(map, return_counts=True)
+        occ = dict(zip(unique, counts))
+    return minutes
 
 def run():
     instructions = np.loadtxt('input_15.txt', delimiter=',', dtype='int64')
     code = instructions.copy()
 
-    map = np.chararray((62, 62))
+    map = np.chararray((52, 52))
     map[:] = 'W'
     map = map.astype('unicode')
 
@@ -145,70 +174,25 @@ def run():
     process.start()
 
 
-    
-    # generate random integer values
-    from random import seed
-    from random import randint
-    import time
-    # seed random number generator
-    seed(1)
-
+ 
     directions = [[0,0],[-1,0],[1,0],[0,-1],[0,1]]
 
     currentpath = [np.array(droidPos)]
     uniquePaths = backtrack(map, droidPos, directions, currentpath, inputs, outputs, notify)
-    print(uniquePaths)
-
-    #while True:
-
-        
-
-
-    #    dir = randint(1, 4)
-    #    direction = directions[dir]
-        
-
-    #    targetPos = np.add(droidPos, direction)
-
-
-
-    #    # get feedback from intcode
-    #    out = getFeedback(dir, inputs, outputs, notify)
-    #    updateMap(out, droidPos, direction, map)
-
-
-    #    if out == -1:
-    #        break
-    #    elif out == 0:
-    #        # droid hit a wall, position not changed
-    #        pass
-    #    elif out == 1:
-    #        # droid moved in the requested direction
-    #        droidPos = targetPos
-    #    elif out == 2:
-    #        # droid moved in the requested direction
-    #        droidPos = targetPos
-    #        print("Found oxygen system at position", droidPos)
-    #    else:
-    #        print("ERROR: unkown feedback", out)
-
-    #    showMap(map, droidPos)
-        
-    #    print(droidPos)
-    #    print(direction)
-    #    time.sleep(0.2)
-
-
-    print("end")
-    #showMap(map)  
-    # part 1
-    unique, counts = np.unique(map, return_counts=True)
-    occ = dict(zip(unique, counts))
-    # if 0 in occ:
-    #     del occ[0]
-    print(occ)
-    print("Result Part 1:", occ['.'])  
     
+    
+    # draw path on map
+    #for pos in uniquePaths[0]:
+    #    map[pos[0],pos[1]] = '*'
+    #map[uniquePaths[0][0][0],uniquePaths[0][0][0]] = 'O'
+    #map[uniquePaths[0][-1][0],uniquePaths[0][-1][0]] = 'O'
+    showMap(map, droidPos)
+    print("Result Part 1:", len(uniquePaths[0])-1)
+    
+
+    minutes = fillOxygen(map, directions)
+    print("Result Part 2:", minutes + 1)
+  
 
 
 
